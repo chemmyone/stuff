@@ -1,0 +1,1020 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sprite Studio</title>
+    
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Libraries -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pako/1.0.11/pako.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/upng-js@2.1.0/UPNG.min.js"></script>
+
+    <!-- Sneak the SDK past Babel! -->
+    <script type="module">
+        import LaylaSDK from 'https://cdn.jsdelivr.net/npm/@layla-network/sdk@latest/+esm';
+        window.LaylaSDK = LaylaSDK;
+        window.dispatchEvent(new Event('layla-sdk-ready'));
+    </script>
+
+    <style>
+        :root {
+            --bg: rgba(11, 9, 20, 0.85);
+            --card: rgba(23, 18, 38, 0.95);
+            --accent: #FF107A;
+            --accent-dark: #D40861;
+            --text: #F4EBFB;
+            --text-dim: #9D80CB;
+            --border: rgba(255, 16, 122, 0.25);
+            --font: 'Hanken Grotesk', system-ui, sans-serif;
+        }
+        
+        body {
+            margin: 0;
+            padding: 16px;
+            background: transparent;
+            color: var(--text);
+            font-family: var(--font);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+        }
+
+        #root { width: 100%; max-width: 1200px; }
+
+        .header {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            margin-bottom: 16px;
+            background: var(--card);
+            padding: 20px;
+            border-radius: 16px;
+            border: 1px solid var(--border);
+            text-align: center;
+        }
+
+        .header-top {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 16px;
+            position: relative;
+            width: 100%;
+        }
+
+        .back-btn-wrapper {
+            position: absolute;
+            left: 0;
+        }
+
+        .search-container {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 16px;
+            margin-bottom: 24px;
+            width: 100%;
+            box-sizing: border-box;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .search-input {
+            width: 100%;
+            max-width: 400px;
+            padding: 14px 20px;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            background: rgba(0,0,0,0.5);
+            color: var(--text);
+            outline: none;
+            font-size: 15px;
+            text-align: center;
+            font-family: var(--font);
+            transition: border-color 0.2s;
+            box-sizing: border-box;
+            margin: 0 auto;
+        }
+        .search-input:focus {
+            border-color: var(--accent);
+        }
+
+        .prompt-editor {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 24px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .prompt-editor textarea {
+            width: 100%;
+            height: 100px;
+            background: rgba(0,0,0,0.5);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text);
+            padding: 12px;
+            font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+            font-size: 13px;
+            resize: vertical;
+            box-sizing: border-box;
+            outline: none;
+            line-height: 1.5;
+            transition: border-color 0.2s;
+            margin-bottom: 16px;
+        }
+
+        .prompt-editor textarea:focus {
+            border-color: var(--accent);
+        }
+
+        .llm-btn {
+            background: transparent;
+            border: 1px solid var(--accent);
+            color: var(--accent);
+            padding: 10px 14px;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 800;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            transition: all 0.2s ease;
+            font-family: var(--font);
+            display: inline-flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .llm-btn.filled, .llm-btn.active {
+            background: var(--accent);
+            color: white;
+            border-color: var(--accent);
+        }
+
+        .llm-btn:hover:not(:disabled) {
+            background: var(--accent);
+            color: white;
+            box-shadow: 0 4px 12px -4px rgba(255, 16, 122, 0.5);
+        }
+
+        .llm-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            border-color: var(--text-dim);
+            color: var(--text-dim);
+            background: transparent;
+        }
+
+        .btn-small {
+            background: transparent;
+            padding: 8px 16px;
+            font-size: 12px;
+            box-shadow: none;
+            border: 1px solid var(--border);
+            color: var(--text);
+            border-radius: 8px;
+            font-family: var(--font);
+            font-weight: 800;
+            cursor: pointer;
+        }
+        .btn-small:hover:not(:disabled) {
+            background: rgba(255,255,255,0.1);
+        }
+
+        .sprite-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            gap: 12px;
+        }
+
+        .char-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+        }
+
+        .char-card {
+            background: var(--card);
+            border: 2px solid var(--border);
+            border-radius: 12px;
+            padding: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: center;
+        }
+        .char-card:hover {
+            border-color: var(--accent);
+            transform: translateY(-4px);
+            background: rgba(255, 16, 122, 0.05);
+        }
+        .char-avatar {
+            width: 100%;
+            aspect-ratio: 1/1;
+            border-radius: 8px;
+            object-fit: cover;
+            margin-bottom: 8px;
+            background: rgba(0,0,0,0.4);
+        }
+
+        .char-card h3 {
+            margin: 0;
+            font-size: 12px;
+            color: var(--text);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .sprite-card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            position: relative;
+            aspect-ratio: 3/4;
+        }
+
+        .sprite-title {
+            text-transform: uppercase;
+            font-size: 11px;
+            font-weight: 800;
+            letter-spacing: 0.05em;
+            text-align: center;
+            color: var(--accent);
+        }
+
+        .sprite-view {
+            flex: 1;
+            background: rgba(0,0,0,0.4);
+            border-radius: 8px;
+            overflow: hidden;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .sprite-view img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            animation: fadeIn 0.4s ease;
+        }
+
+        .spinner {
+            width: 24px;
+            height: 24px;
+            border: 3px solid var(--border);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        .regen-btn {
+            position: absolute;
+            bottom: 6px;
+            right: 6px;
+            background: rgba(0,0,0,0.75);
+            border: 1px solid var(--border);
+            color: white;
+            border-radius: 8px;
+            padding: 4px 8px;
+            font-size: 10px;
+            font-weight: 600;
+            cursor: pointer;
+            backdrop-filter: blur(4px);
+            transition: opacity 0.2s;
+        }
+
+        .regen-btn:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--accent);
+            color: white;
+            padding: 14px 28px;
+            border-radius: 999px;
+            font-size: 13px;
+            font-weight: 700;
+            font-family: var(--font);
+            box-shadow: 0 8px 24px -6px var(--accent-dark);
+            z-index: 1000;
+            pointer-events: none;
+            white-space: nowrap;
+            animation: toastEnter 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes toastEnter {
+            from { opacity: 0; transform: translate(-50%, 20px); }
+            to { opacity: 1; transform: translate(-50%, 0); }
+        }
+
+        @media (max-width: 600px) {
+            .back-btn-wrapper {
+                position: static;
+                margin-bottom: 12px;
+            }
+            .header-top {
+                flex-direction: column;
+                gap: 8px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+
+        // --- THE TROPE TRINITY DICTIONARIES ---
+        
+        const FEMALE_EXPRESSION_MAP = {
+            'admiration': 'admiring smile, hands clasped, view from below',
+            'amusement': 'laughing, hand over mouth, medium close-up',
+            'anger': 'angry expression, clenched fists, dutch angle',
+            'annoyance': 'annoyed expression, arms crossed, medium shot',
+            'approval': 'approving smile, thumbs up, medium close-up',
+            'caring': 'caring smile, leaning forward, close-up',
+            'confusion': 'confused expression, head tilt, medium close-up',
+            'curiosity': 'curious expression, leaning closer, close-up',
+            'desire': 'sultry gaze, flushed face, view from above',
+            'disappointment': 'disappointed expression, looking down, high angle',
+            'disapproval': 'disapproving expression, arms crossed, straight-on',
+            'disgust': 'disgusted expression, turning away, view from below',
+            'embarrassment': 'heavy blush, hiding face, high angle',
+            'excitement': 'excited smile, raised fists, dutch angle',
+            'fear': 'fearful expression, defensive posture, high angle',
+            'gratitude': 'grateful smile, hands on chest, medium close-up',
+            'grief': 'crying heavily, covering face, extreme close-up',
+            'joy': 'joyful smile, reaching out, dutch angle',
+            'love': 'loving gaze, hands on cheeks, close-up',
+            'nervousness': 'nervous smile, playing with hair, medium close-up',
+            'neutral': 'neutral expression, relaxed posture, medium shot',
+            'optimism': 'optimistic smile, looking upward, view from below',
+            'pride': 'smug smirk, hands on hips, view from below',
+            'realization': 'gasping, hands to face, close-up',
+            'relief': 'relieved sigh, hand on chest, medium close-up',
+            'remorse': 'guilty expression, looking down, high angle',
+            'sadness': 'sad expression, wiping tears, high angle',
+            'surprise': 'shocked expression, wide eyes, dutch angle'
+        };
+
+        const MALE_EXPRESSION_MAP = {
+            'admiration': 'impressed smile, relaxed posture, medium close-up',
+            'amusement': 'laughing, amused expression, arms crossed, medium close-up',
+            'anger': 'glaring, intense expression, low angle',
+            'annoyance': 'sighing, looking away, arms crossed',
+            'approval': 'confident smile, nodding, medium close-up',
+            'caring': 'gentle smile, warm eyes, close-up',
+            'confusion': 'raised eyebrow, confused expression, medium close-up',
+            'curiosity': 'curious expression, hand on chin, close-up',
+            'desire': 'intense gaze, leaning closer, straight-on',
+            'disappointment': 'shaking head, disappointed expression, high angle',
+            'disapproval': 'frowning, arms crossed, straight-on',
+            'disgust': 'disgusted expression, grimacing, view from below',
+            'embarrassment': 'faint blush, rubbing back of neck, straight-on',
+            'excitement': 'excited smile, energetic posture, dutch angle',
+            'fear': 'fearful expression, stepping back, high angle',
+            'gratitude': 'grateful smile, hand on chest, medium close-up',
+            'grief': 'silent tears, looking down, extreme close-up',
+            'joy': 'wide smile, relaxed posture, dynamic angle',
+            'love': 'warm smile, loving gaze, close-up',
+            'nervousness': 'nervous smile, looking away, medium close-up',
+            'neutral': 'neutral expression, relaxed posture, medium shot',
+            'optimism': 'confident smile, looking forward, view from below',
+            'pride': 'smirking, arms crossed, looking down at viewer',
+            'realization': 'wide eyes, sudden realization, close-up',
+            'relief': 'sighing in relief, relaxed shoulders, medium close-up',
+            'remorse': 'guilty expression, avoiding eye contact, high angle',
+            'sadness': 'sad expression, looking away, high angle',
+            'surprise': 'shocked expression, stepping back, dutch angle'
+        };
+
+        const NEUTRAL_EXPRESSION_MAP = {
+            'admiration': 'admiring expression, medium close-up',
+            'amusement': 'laughing, relaxed posture, medium close-up',
+            'anger': 'angry expression, tense posture, dutch angle',
+            'annoyance': 'annoyed expression, straight-on',
+            'approval': 'approving smile, thumbs up, medium close-up',
+            'caring': 'caring smile, close-up',
+            'confusion': 'confused expression, head tilt, medium close-up',
+            'curiosity': 'curious expression, leaning forward, close-up',
+            'desire': 'heavy-lidded eyes, flush, close-up',
+            'disappointment': 'disappointed expression, looking down, high angle',
+            'disapproval': 'disapproving expression, straight-on',
+            'disgust': 'disgusted expression, turning away, view from below',
+            'embarrassment': 'blushing, averting eyes, medium close-up',
+            'excitement': 'excited expression, wide eyes, dutch angle',
+            'fear': 'fearful expression, high angle',
+            'gratitude': 'grateful smile, medium close-up',
+            'grief': 'crying, covering face, extreme close-up',
+            'joy': 'joyful smile, dynamic angle',
+            'love': 'loving gaze, close-up',
+            'nervousness': 'nervous expression, medium close-up',
+            'neutral': 'neutral expression, relaxed posture, medium shot',
+            'optimism': 'optimistic expression, looking upward, view from below',
+            'pride': 'proud smile, chin up, view from below',
+            'realization': 'gasping, close-up',
+            'relief': 'relieved expression, medium close-up',
+            'remorse': 'guilty expression, looking down, high angle',
+            'sadness': 'sad expression, high angle',
+            'surprise': 'surprised expression, wide eyes, dutch angle'
+        };
+
+        const EXPRESSIONS = Object.keys(FEMALE_EXPRESSION_MAP);
+        
+        const TEMPLATE_ORIGINAL = "[species tag], [eye color], [hair style/color], [chest size], [non-human/monster tags], [outfit tags], [distinctive physical features], [location tags], [lighting tag]";
+        const TEMPLATE_KNOWN = "[series name], [character name], [chest size], [outfit tags], [distinctive physical features], [location tags], [lighting tag]";
+
+        // --- Bulletproof Compressor ---
+        const compressTo8BitPNG = async (base64Str) => {
+            return new Promise((resolve, reject) => {
+                const img = new Image();
+                img.crossOrigin = "Anonymous";
+                img.onload = () => {
+                    try {
+                        const canvas = document.createElement('canvas');
+                        canvas.width = img.width;
+                        canvas.height = img.height;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0);
+                        
+                        try {
+                            const imgData = ctx.getImageData(0, 0, img.width, img.height);
+                            const pngBuffer = UPNG.encode([imgData.data.buffer], img.width, img.height, 256);
+                            resolve(pngBuffer);
+                        } catch (upngErr) {
+                            canvas.toBlob((blob) => {
+                                blob.arrayBuffer().then(buf => resolve(buf));
+                            }, 'image/png');
+                        }
+                    } catch (e) {
+                        reject("Canvas operation failed: " + e.message);
+                    }
+                };
+                img.onerror = () => reject("Failed to load image into canvas!");
+                img.src = base64Str.startsWith('data:') ? base64Str : 'data:image/jpeg;base64,' + base64Str;
+            });
+        };
+
+        // --- Raw Bridge for Image Gen ---
+        const generateImageRaw = async (prompt, onProgress) => {
+            return new Promise((resolve, reject) => {
+                const listener = (event) => {
+                    try {
+                        const parsed = JSON.parse(event.data);
+                        if (parsed.event === 'on_generate_image_progress') {
+                            if (onProgress && parsed.data) {
+                                onProgress(parsed.data.steps || 0, parsed.data.total_steps || 1);
+                            }
+                        } else if (parsed.event === 'on_generate_image_response' || parsed.event === 'on_generate_image_result') {
+                            window.removeEventListener('message', listener);
+                            let imgData = null;
+                            if (typeof parsed.data === 'string') {
+                                imgData = parsed.data;
+                            } else if (parsed.data) {
+                                imgData = parsed.data.image_data_base64 || parsed.data.image_base64 || parsed.data.image || parsed.data.base64;
+                            }
+                            if (imgData) resolve(imgData);
+                            else reject("No image data extracted from Layla's response");
+                        } else if (parsed.event === 'on_error') {
+                            window.removeEventListener('message', listener);
+                            reject(parsed.data?.message || "Layla generation error");
+                        }
+                    } catch (e) {} 
+                };
+                window.addEventListener('message', listener);
+                if (window.ReactNativeWebView) {
+                    window.ReactNativeWebView.postMessage(JSON.stringify({
+                        cmd: 'generate_image',
+                        data: { 
+                            prompt: prompt,
+                            negative_prompt: "worst quality,bad quality,bad hands,very displeasing,extra digit,fewer digits,jpeg artifacts,signature,username,reference,mutated,lineup"
+                        } 
+                    }));
+                } else {
+                    window.removeEventListener('message', listener);
+                    reject("ReactNativeWebView bridge not found!");
+                }
+            });
+        };
+
+        // --- Main App ---
+        function App() {
+            const [layla, setLayla] = useState(null);
+            const [characters, setCharacters] = useState([]);
+            const [searchQuery, setSearchQuery] = useState("");
+            const [isLoadingChars, setIsLoadingChars] = useState(true);
+            const [selectedChara, setSelectedChara] = useState(null);
+            
+            const [basePrompt, setBasePrompt] = useState("");
+            const [isGeneratingPrompt, setIsGeneratingPrompt] = useState(false);
+            
+            const [templateType, setTemplateType] = useState('ORIGINAL');
+            const [gender, setGender] = useState('FEMALE'); 
+            
+            const [sprites, setSprites] = useState(EXPRESSIONS.map(exp => ({ name: exp, status: 'idle', buffer: null, src: null, progress: 0 })));
+            const [isGeneratingAll, setIsGeneratingAll] = useState(false);
+            
+            const [isBusy, setIsBusy] = useState(false);
+            const [toastMsg, setToastMsg] = useState("");
+            const abortGenRef = useRef(false);
+            const fileInputRef = useRef(null);
+
+            useEffect(() => {
+                const initLayla = () => {
+                    try {
+                        setLayla(new window.LaylaSDK());
+                    } catch (error) {
+                        console.error("Error initializing Layla SDK:", error);
+                    }
+                };
+
+                if (window.LaylaSDK) {
+                    initLayla();
+                } else {
+                    window.addEventListener('layla-sdk-ready', initLayla, { once: true });
+                    setTimeout(() => {
+                        if (!window.LaylaSDK) alert("Could not load Layla SDK.");
+                    }, 5000);
+                }
+            }, []);
+
+            useEffect(() => {
+                if (!layla) return;
+                async function fetchCharacters() {
+                    try {
+                        const chars = await layla.characters.list(0, 9999);
+                        const charsWithImages = await Promise.all(chars.map(async (c) => {
+                            const imgSrc = await layla.characters.getImage(c.id);
+                            return { ...c, imageUrl: imgSrc };
+                        }));
+                        setCharacters(charsWithImages);
+                    } catch (error) {
+                        console.error("Error fetching characters:", error);
+                    } finally {
+                        setIsLoadingChars(false);
+                    }
+                }
+                fetchCharacters();
+            }, [layla]);
+
+            const fillTemplate = (type) => {
+                setTemplateType(type);
+                const bodyTag = gender === 'FEMALE' ? '[chest size]' : '[body build]';
+                if (type === 'ORIGINAL') {
+                    setBasePrompt(`[species tag], [eye color], [hair style/color], ${bodyTag}, [non-human/monster tags], [outfit tags], [distinctive physical features], [location tags], [lighting tag]`);
+                } else {
+                    setBasePrompt(`[series name], [character name], ${bodyTag}, [outfit tags], [distinctive physical features], [location tags], [lighting tag]`);
+                }
+            };
+
+            const handleSelectChara = (char) => {
+                setSelectedChara(char);
+                setGender('FEMALE');
+                setTemplateType('ORIGINAL');
+                setBasePrompt(`[species tag], [eye color], [hair style/color], [chest size], [non-human/monster tags], [outfit tags], [distinctive physical features], [location tags], [lighting tag]`);
+            };
+
+            const handleGenderChange = (newGender) => {
+                setGender(newGender);
+                setBasePrompt(prev => {
+                    if (newGender === 'FEMALE') return prev.replace(/\[body build\]/g, '[chest size]');
+                    else return prev.replace(/\[chest size\]/g, '[body build]');
+                });
+            };
+
+            const generateLLMPrompt = async () => {
+                if (!layla || !selectedChara || isBusy || !basePrompt.trim()) return;
+                setIsBusy(true);
+                setIsGeneratingPrompt(true);
+                
+                try {
+                    const charData = selectedChara.data.data;
+                    const charContext = `Name: ${charData.name}\nDescription: ${charData.description}\nPersonality: ${charData.personality}`;
+                    
+                    const bodyRule = gender === 'FEMALE' 
+                        ? "4. For [chest size], YOU MUST strictly use: flat chest, small breasts, medium breasts, large breasts, or huge breasts. Do not use cup sizes."
+                        : "4. For [body build], YOU MUST strictly use: lean, muscular, athletic, bulky, or slender.";
+
+                    const systemInstructions = `You are an expert Stable Diffusion image prompt generator. 
+CRITICAL RULES:
+1. You will be given a template containing bracketed placeholders (e.g. [eye color]).
+2. Replace each placeholder with the appropriate Danbooru-style tags based on the character's profile.
+3. You must output a MAXIMUM of 15 comma-separated tags total!
+${bodyRule}
+5. Do NOT include facial expressions or emotions (e.g. smiling, scowling, angry, crying). They will be added later.
+6. Keep the exact comma-separated structure of the template.
+7. NEVER use complete sentences or conversational text. Output ONLY the filled template.`;
+
+                    const completion = await layla.chat.completions.create({
+                        messages: [
+                            { role: 'system', content: systemInstructions },
+                            { role: 'user', content: `Character Profile:\n${charContext}\n\nTemplate to fill:\n${basePrompt}` }
+                        ]
+                    });
+
+                    let generated = completion.choices[0].message.content || "";
+                    
+                    generated = generated.replace(/<\|?(?:think|channel|thought|thought_process).*?>[\s\S]*?(?:<\/?\|?(?:think|channel|thought|thought_process).*?>|<(?:think|channel|thought|thought_process)\|?>)/gi, '');
+                    generated = generated.replace(/<\|?im_start\|?>\s*(?:think|channel|thought)[\s\S]*?<\|?im_end\|?>/gi, '');
+                    
+                    generated = generated.trim();
+                    generated = generated.replace(/^(Here is the filled template:|Tags:|\*\*Prompt:\*\*|Sure!)/i, '').trim();
+                    generated = generated.replace(/\(\((masterpiece|best quality|amazing quality)[^)]*\)\),?(?:\s*(?:1girl|1boy|solo),?)?\s*/gi, '');
+                    
+                    setBasePrompt(generated);
+                } catch (err) {
+                    console.error("Failed to generate LLM prompt:", err);
+                    alert("Could not extract prompt. Is the text model loaded?");
+                } finally {
+                    setIsGeneratingPrompt(false);
+                    setIsBusy(false);
+                }
+            };
+
+            const generateSingle = async (index, bypassLock = false) => {
+                if (!bypassLock && isBusy) return;
+                if (!bypassLock) setIsBusy(true);
+
+                const expName = sprites[index].name;
+                setSprites(prev => {
+                    const next = [...prev];
+                    next[index] = { ...next[index], status: 'loading', progress: 0 };
+                    return next;
+                });
+
+                try {
+                    const prefix = gender === 'FEMALE' ? '1girl' : gender === 'MALE' ? '1boy' : 'solo';
+                    const activeMap = gender === 'FEMALE' ? FEMALE_EXPRESSION_MAP : gender === 'MALE' ? MALE_EXPRESSION_MAP : NEUTRAL_EXPRESSION_MAP;
+                    const suffix = activeMap[expName];
+                    
+                    const fullPrompt = `((masterpiece, best quality)), ${prefix}, ${basePrompt}, ${suffix}`;
+                    
+                    const rawBase64 = await generateImageRaw(fullPrompt, (steps, totalSteps) => {
+                        const pct = totalSteps > 0 ? Math.round((steps / totalSteps) * 100) : 0;
+                        setSprites(prev => {
+                            const next = [...prev];
+                            if (next[index].status === 'loading') {
+                                next[index] = { ...next[index], progress: pct };
+                            }
+                            return next;
+                        });
+                    });
+                    
+                    const compressedBuffer = await compressTo8BitPNG(rawBase64);
+                    const blob = new Blob([compressedBuffer], { type: 'image/png' });
+                    const url = URL.createObjectURL(blob);
+
+                    setSprites(prev => {
+                        const next = [...prev];
+                        next[index] = { ...next[index], status: 'success', buffer: compressedBuffer, src: url, progress: 100 };
+                        return next;
+                    });
+                } catch (err) {
+                    console.error("Generation error:", err);
+                    setSprites(prev => {
+                        const next = [...prev];
+                        next[index] = { ...next[index], status: 'error', progress: 0 };
+                        return next;
+                    });
+                } finally {
+                    if (!bypassLock) setIsBusy(false);
+                }
+            };
+
+            const generateAll = async () => {
+                if (isBusy) return;
+                abortGenRef.current = false;
+                setIsBusy(true);
+                setIsGeneratingAll(true);
+                
+                for (let i = 0; i < sprites.length; i++) {
+                    if (abortGenRef.current) break;
+                    if (sprites[i].status !== 'success' && sprites[i].status !== 'error') {
+                        await generateSingle(i, true);
+                    }
+                }
+                
+                setIsGeneratingAll(false);
+                setIsBusy(false);
+            };
+
+            const stopGeneration = () => {
+                abortGenRef.current = true;
+            };
+
+            const handleImportZip = async (event) => {
+                const file = event.target.files[0];
+                if (!file) return;
+                
+                setIsBusy(true);
+                setToastMsg("Importing Sprite Studio ZIP...");
+                
+                try {
+                    const zip = await JSZip.loadAsync(file);
+                    
+                    const configFile = zip.file('studio_config.json');
+                    if (configFile) {
+                        const configStr = await configFile.async('text');
+                        try {
+                            const config = JSON.parse(configStr);
+                            if (config.gender) setGender(config.gender);
+                            if (config.templateType) setTemplateType(config.templateType);
+                            if (config.basePrompt) setBasePrompt(config.basePrompt);
+                        } catch (e) {
+                            console.warn("Could not parse studio_config.json", e);
+                        }
+                    }
+                    
+                    const newSprites = [...sprites];
+                    let importedCount = 0;
+                    
+                    for (let i = 0; i < newSprites.length; i++) {
+                        const expName = newSprites[i].name;
+                        let pngFile = zip.file(`${expName}.png`);
+                        if (!pngFile) {
+                            const regex = new RegExp(`.*${expName}\\.png$`, 'i');
+                            const matches = zip.file(regex);
+                            if (matches.length > 0) pngFile = matches[0];
+                        }
+                        
+                        if (pngFile) {
+                            const arrayBuffer = await pngFile.async('arraybuffer');
+                            const blob = new Blob([arrayBuffer], { type: 'image/png' });
+                            const url = URL.createObjectURL(blob);
+                            
+                            newSprites[i] = {
+                                ...newSprites[i],
+                                status: 'success',
+                                buffer: arrayBuffer,
+                                src: url,
+                                progress: 100
+                            };
+                            importedCount++;
+                        }
+                    }
+                    
+                    setSprites(newSprites);
+                    setToastMsg(`Imported ${importedCount} sprites! Nyaa~`);
+                } catch (err) {
+                    console.error("Import error:", err);
+                    setToastMsg("Import failed: Invalid ZIP file.");
+                } finally {
+                    setIsBusy(false);
+                    event.target.value = '';
+                    setTimeout(() => setToastMsg(""), 3500);
+                }
+            };
+
+            const downloadZip = async () => {
+                const zip = new JSZip();
+                const rawName = selectedChara.data.data.name || 'Character';
+                const safeCharName = rawName.replace(/[^a-zA-Z0-9_-]/g, '_');
+                
+                let added = 0;
+                sprites.forEach(sprite => {
+                    if (sprite.status === 'success' && sprite.buffer) {
+                        zip.file(`${sprite.name}.png`, sprite.buffer);
+                        added++;
+                    }
+                });
+
+                if (added === 0) {
+                    setToastMsg("No successful sprites to download yet!");
+                    setTimeout(() => setToastMsg(""), 3500);
+                    return;
+                }
+
+                const config = { templateType, gender, basePrompt };
+                zip.file('studio_config.json', JSON.stringify(config, null, 2));
+
+                setIsBusy(true);
+                setToastMsg(`Packaging ${added} sprite(s)...`);
+                
+                try {
+                    const base64Content = await zip.generateAsync({ type: "base64" });
+                    setToastMsg("Saving to device...");
+                    
+                    const result = await layla.utils.saveFile(
+                        `${safeCharName}_Expressions.zip`,
+                        base64Content,
+                        true
+                    );
+                    
+                    if (!result.success) {
+                        throw new Error(result.message || "Failed to save file.");
+                    }
+                    setToastMsg("Saved successfully! Nyaa~");
+                } catch (err) {
+                    console.error("Zip export error:", err);
+                    setToastMsg("Export failed: " + err.message);
+                } finally {
+                    setIsBusy(false);
+                    setTimeout(() => setToastMsg(""), 4000);
+                }
+            };
+
+            const goBack = () => {
+                setSelectedChara(null);
+                setSearchQuery("");
+                setSprites(EXPRESSIONS.map(exp => ({ name: exp, status: 'idle', buffer: null, src: null, progress: 0 })));
+            };
+
+            if (!layla || isLoadingChars) {
+                return (
+                    <div style={{ textAlign: 'center', marginTop: '20vh' }}>
+                        <div className="spinner" style={{ margin: '0 auto 16px' }}></div>
+                        <h2 style={{ color: 'var(--accent)' }}>Booting up Sprite Studio...</h2>
+                        <p style={{ color: 'var(--text-dim)' }}>Loading your roster from Layla</p>
+                    </div>
+                );
+            }
+
+            if (!selectedChara) {
+                const filteredCharacters = characters.filter(c => 
+                    c.data.data.name.toLowerCase().includes(searchQuery.toLowerCase())
+                );
+
+                return (
+                    <div style={{ width: '100%' }}>
+                        <div className="search-container">
+                            <input 
+                                className="search-input"
+                                type="text" 
+                                placeholder="Search or select character..." 
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                            />
+                        </div>
+                        <div className="char-grid">
+                            {filteredCharacters.map(char => (
+                                <div key={char.id} className="char-card" onClick={() => handleSelectChara(char)}>
+                                    <img 
+                                        className="char-avatar" 
+                                        src={char.imageUrl || 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><rect width="100%" height="100%" fill="%23231f29"/></svg>'} 
+                                        alt={char.data.data.name} 
+                                    />
+                                    <h3>{char.data.data.name}</h3>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                );
+            }
+
+            return (
+                <div style={{ width: '100%' }}>
+                    {toastMsg && <div className="toast">{toastMsg}</div>}
+                    
+                    <div className="header">
+                        <div className="header-top">
+                            <div className="back-btn-wrapper">
+                                <button className="btn-small" onClick={goBack} disabled={isBusy && !isGeneratingAll}>
+                                    ← BACK
+                                </button>
+                            </div>
+                            <h2 style={{ margin: 0, color: 'var(--accent)', fontSize: '20px' }}>
+                                {selectedChara.data.data.name}'s Studio
+                            </h2>
+                        </div>
+                        <div style={{ fontSize: '13px', color: 'var(--text-dim)', fontWeight: 'bold' }}>
+                            {sprites.filter(s => s.status === 'success').length} / 28 Complete
+                        </div>
+                        
+                        <div style={{ width: '100%', maxWidth: '350px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                            {!isGeneratingAll ? (
+                                <button className="llm-btn filled" style={{ width: '100%', padding: '12px', fontSize: '13px' }} onClick={generateAll} disabled={isBusy}>
+                                    ✨ GENERATE ALL
+                                </button>
+                            ) : (
+                                <button className="llm-btn filled" style={{ width: '100%', padding: '12px', fontSize: '13px', background: '#FF3333', borderColor: '#FF3333' }} onClick={stopGeneration}>
+                                    🛑 STOP
+                                </button>
+                            )}
+                            <div style={{ display: 'flex', gap: '10px' }}>
+                                <button className="llm-btn" style={{ flex: 1, padding: '10px' }} onClick={() => fileInputRef.current.click()} disabled={isBusy && !isGeneratingAll}>
+                                    📂 IMPORT ZIP
+                                </button>
+                                <button className={`llm-btn ${sprites.filter(s => s.status === 'success').length > 0 ? 'active' : ''}`} style={{ flex: 1, padding: '10px' }} onClick={downloadZip} disabled={isBusy && !isGeneratingAll}>
+                                    📦 EXPORT ZIP
+                                </button>
+                                <input type="file" ref={fileInputRef} onChange={handleImportZip} accept=".zip" style={{ display: 'none' }} />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="prompt-editor">
+                        <div style={{ fontSize: '15px', color: 'var(--accent)', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '16px', textAlign: 'center' }}>
+                            BASE PROMPT TEMPLATE
+                        </div>
+                        
+                        <div style={{ display: 'flex', justifyContent: 'center', gap: '12px', marginBottom: '16px', flexWrap: 'wrap' }}>
+                            <button className={`llm-btn ${templateType === 'ORIGINAL' ? 'active' : ''}`} onClick={() => fillTemplate('ORIGINAL')} disabled={isBusy}>
+                                ORIGINAL CHAR
+                            </button>
+                            <button className={`llm-btn ${templateType === 'KNOWN' ? 'active' : ''}`} onClick={() => fillTemplate('KNOWN')} disabled={isBusy}>
+                                KNOWN CHAR
+                            </button>
+                        </div>
+
+                        <div style={{ display: 'flex', justifyContent: 'center', gap: '8px', marginBottom: '16px', background: 'rgba(0,0,0,0.3)', padding: '6px', borderRadius: '12px' }}>
+                            <button className={`llm-btn ${gender === 'FEMALE' ? 'active' : ''}`} onClick={() => handleGenderChange('FEMALE')} disabled={isBusy}>
+                                FEMALE
+                            </button>
+                            <button className={`llm-btn ${gender === 'MALE' ? 'active' : ''}`} onClick={() => handleGenderChange('MALE')} disabled={isBusy}>
+                                MALE
+                            </button>
+                            <button className={`llm-btn ${gender === 'NEUTRAL' ? 'active' : ''}`} onClick={() => handleGenderChange('NEUTRAL')} disabled={isBusy}>
+                                NEUTRAL
+                            </button>
+                        </div>
+
+                        <div style={{ textAlign: 'center', marginBottom: '12px' }}>
+                            <span style={{ fontSize: '10px', color: 'var(--text-dim)', background: 'rgba(255, 16, 122, 0.1)', padding: '4px 10px', borderRadius: '6px', fontWeight: 'bold' }}>
+                                Masterpiece prefixed
+                            </span>
+                        </div>
+                        
+                        <textarea 
+                            value={basePrompt}
+                            onChange={(e) => setBasePrompt(e.target.value)}
+                            spellCheck="false"
+                            disabled={isBusy && !isGeneratingAll}
+                            placeholder="[species tag], [eye color], [hair style/color], [chest size]..."
+                        />
+                        
+                        <button 
+                            className={`llm-btn ${isGeneratingPrompt ? 'active' : ''}`}
+                            style={{ width: '100%', marginTop: '8px', padding: '12px', fontSize: '13px' }}
+                            onClick={generateLLMPrompt} 
+                            disabled={isBusy || !basePrompt.trim()}
+                        >
+                            {isGeneratingPrompt ? '🧠 EXTRACTING...' : '🪄 AUTO-EXTRACT TO TEMPLATE'}
+                        </button>
+                    </div>
+
+                    <div className="sprite-grid">
+                        {sprites.map((sprite, i) => (
+                            <div key={sprite.name} className="sprite-card">
+                                <div className="sprite-title">{sprite.name}</div>
+                                <div className="sprite-view">
+                                    {sprite.status === 'idle' && <div style={{ color: 'var(--text-dim)', fontSize: '12px' }}>Waiting...</div>}
+                                    
+                                    {sprite.status === 'loading' && (
+                                        <div style={{ width: '80%', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                            <div style={{ fontSize: '11px', color: 'var(--accent)', textAlign: 'center', fontWeight: '800', letterSpacing: '0.05em' }}>
+                                                {sprite.progress}%
+                                            </div>
+                                            <div style={{ height: '6px', borderRadius: '999px', background: 'rgba(255, 16, 122, 0.15)', overflow: 'hidden' }}>
+                                                <div style={{ height: '100%', width: `${sprite.progress}%`, background: 'var(--accent)', transition: 'width 0.2s ease' }}></div>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {sprite.status === 'error' && <div style={{ color: '#FF3333', fontSize: '12px', fontWeight: 'bold' }}>Failed</div>}
+                                    {sprite.status === 'success' && <img src={sprite.src} alt={sprite.name} />}
+                                    
+                                    {sprite.status !== 'loading' && (
+                                        <button className="regen-btn" onClick={() => generateSingle(i)} disabled={isBusy && !isGeneratingAll}>
+                                            Regen
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
